@@ -3,8 +3,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -12,6 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	MinerRewardFromAddress = ""
 )
 
 type Transaction struct {
@@ -29,20 +31,25 @@ func (t *Transaction) computeHash() []byte {
 }
 
 // Sign 使用私钥对交易数据的哈希值进行签名
-func (tx *Transaction) Sign(privateKey *ecdsa.PrivateKey) error {
-	hash := tx.computeHash()
-	r, s, err := ecdsa.Sign(rand.Reader, privateKey, hash)
-	if err != nil {
-		return err
-	}
-	signature := append(r.Bytes(), s.Bytes()...)
-	tx.signature = hex.EncodeToString(signature)
-	return nil
+func (t *Transaction) Sign(privateKey string) error {
+	var err error
+	t.signature, err = signMessage(privateKey, string(t.computeHash()))
+	return err
 }
 
-func (t *Transaction) isValid() bool {
-	//Todo:
-	return true
+func (t *Transaction) isValid() (res bool) {
+	//当this.from === ''，说明该转账是由区块链发起的矿工奖励，无需校验签名的合法性
+	if t.from == MinerRewardFromAddress {
+		return true
+	}
+
+	var err error
+	res, err = verifySignature(t.from, string(t.computeHash()), t.signature)
+	if err != nil {
+		fmt.Println("verify signature failed,err:", err)
+		return false
+	}
+	return
 }
 
 // 区块，用来存储交易信息
@@ -170,7 +177,7 @@ func (blockchain *Blockchain) addTransction2Pool(transaction Transaction) error 
 func (blockchain *Blockchain) mineTransctionFromPool(minerRewardAddress string) {
 	///生成矿工奖励的transction,放到transationsPool里面
 	minerRewardTransction := Transaction{
-		from:   "0",
+		from:   MinerRewardFromAddress,
 		to:     minerRewardAddress,
 		amount: blockchain.minerReward,
 	}
