@@ -1,4 +1,4 @@
-package main
+package encryption
 
 import (
 	"crypto/ecdsa"
@@ -10,7 +10,7 @@ import (
 	"math/big"
 )
 
-func generateKeyPair() (privateKey, publicKey string) {
+func GenerateKeyPair() (privateKey, publicKey string) {
 	// 使用椭圆曲线加密算法生成密钥对
 	privateKeyECDSA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -28,7 +28,7 @@ func generateKeyPair() (privateKey, publicKey string) {
 	return privateKey, publicKey
 }
 
-func signMessage(privateKey string, message string) (string, error) {
+func SignMessage(privateKey string, message string) (string, error) {
 	// 将私钥从十六进制字符串转换回 *ecdsa.PrivateKey
 	privateKeyBytes, err := hex.DecodeString(privateKey)
 	if err != nil {
@@ -55,7 +55,7 @@ func signMessage(privateKey string, message string) (string, error) {
 	return hex.EncodeToString(signature), nil
 }
 
-func verifySignature(publicKey string, message string, signature string) (bool, error) {
+func VerifySignature(publicKey string, message string, signature string) (bool, error) {
 	// 将公钥从十六进制字符串转换回 *ecdsa.PublicKey
 	publicKeyBytes, err := hex.DecodeString(publicKey)
 	if err != nil {

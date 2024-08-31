@@ -1,7 +1,7 @@
-// package blockchain
-package main
+package blockchain
 
 import (
+	"CcCoin-go-version/internal/encryption" //导入自个项目里的包
 	"bytes"
 	"crypto/sha256"
 	"errors"
@@ -39,7 +39,7 @@ func (t *Transaction) computeHash() string {
 // Sign 使用私钥对交易数据的哈希值进行签名
 func (t *Transaction) Sign(privateKey string) error {
 	var err error
-	t.signature, err = signMessage(privateKey, t.computeHash())
+	t.signature, err = encryption.SignMessage(privateKey, t.computeHash()) //调用自个项目里的别的包的方法，需要加上包名
 	return err
 }
 
@@ -51,7 +51,7 @@ func (t *Transaction) isValid() bool {
 
 	res := false
 	var err error
-	res, err = verifySignature(t.from, t.computeHash(), t.signature)
+	res, err = encryption.VerifySignature(t.from, t.computeHash(), t.signature)
 	if err != nil {
 		fmt.Println("verify signature failed,err:", err)
 		return false
@@ -127,7 +127,7 @@ func (block *Block) mine(difficulty int) {
 			block.nonce++
 		} else {
 			block.hash = hashRes
-			fmt.Printf("挖矿结束, nonce:%d,difficulty:%d,hash:%s\n", block.nonce, difficulty, block.hash)
+			fmt.Printf("finish mining, nonce:%d,difficulty:%d,hash:%s\n", block.nonce, difficulty, block.hash)
 			break
 		}
 	}
@@ -169,7 +169,7 @@ func (blockchain *Blockchain) getLatestBlock() Block {
 }
 
 // 添加待存储的transction到transction pool里面，供后续挖出来的block来存储这些transction交易记录
-func (blockchain *Blockchain) addTransction2Pool(transaction Transaction) error {
+func (blockchain *Blockchain) AddTransction2Pool(transaction Transaction) error {
 	// 添加transaction到transationsPool之前，先校验一下transation的合法性
 	if !transaction.isValid() {
 		return errors.New("invalid transaction,reject it")
@@ -181,14 +181,14 @@ func (blockchain *Blockchain) addTransction2Pool(transaction Transaction) error 
 
 // 从chain的待存储的transationsPool里面挑选收益最高的transations来存储到新生成的block
 // 也就是说生成block的过程应该是chain来负责了，而不是像上面方法一样是外面传进来的
-func (blockchain *Blockchain) mineTransctionFromPool(minerRewardAddress string) {
+func (blockchain *Blockchain) MineTransctionFromPool(minerRewardAddress string) {
 	///生成矿工奖励的transction,放到transationsPool里面
 	minerRewardTransction := Transaction{
 		from:   MinerRewardFromAddress,
 		to:     minerRewardAddress,
 		amount: blockchain.minerReward,
 	}
-	err := blockchain.addTransction2Pool(minerRewardTransction)
+	err := blockchain.AddTransction2Pool(minerRewardTransction)
 	if err != nil {
 		fmt.Println("add minerRewardTransction to transationsPool failed")
 		return
