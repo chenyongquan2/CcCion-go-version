@@ -4,7 +4,6 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -24,32 +23,40 @@ type Transaction struct {
 	signature string
 }
 
-func (t *Transaction) computeHash() []byte {
+func NewTransaction(senderPublicKey, senderPrivateKey, receiverPublicKey string, amount float64) (Transaction, error) {
+	transaction := Transaction{from: senderPublicKey, to: receiverPublicKey, amount: amount}
+	//使用发送者的密钥对里的私钥来进行签名
+	err := transaction.Sign(senderPrivateKey)
+	return transaction, err
+}
+
+func (t *Transaction) computeHash() string {
 	data := fmt.Sprintf("%v%v%v", t.from, t.to, t.amount)
 	hash := sha256.Sum256([]byte(data))
-	return hash[:]
+	return string(hash[:])
 }
 
 // Sign 使用私钥对交易数据的哈希值进行签名
 func (t *Transaction) Sign(privateKey string) error {
 	var err error
-	t.signature, err = signMessage(privateKey, string(t.computeHash()))
+	t.signature, err = signMessage(privateKey, t.computeHash())
 	return err
 }
 
-func (t *Transaction) isValid() (res bool) {
+func (t *Transaction) isValid() bool {
 	//当this.from === ''，说明该转账是由区块链发起的矿工奖励，无需校验签名的合法性
 	if t.from == MinerRewardFromAddress {
 		return true
 	}
 
+	res := false
 	var err error
-	res, err = verifySignature(t.from, string(t.computeHash()), t.signature)
+	res, err = verifySignature(t.from, t.computeHash(), t.signature)
 	if err != nil {
 		fmt.Println("verify signature failed,err:", err)
 		return false
 	}
-	return
+	return res
 }
 
 // 区块，用来存储交易信息
@@ -66,13 +73,13 @@ func NewBlock(transactions []Transaction, prevHash string) Block {
 		transactions: transactions,
 		prevHash:     prevHash,
 	}
-	block.hash = hex.EncodeToString(block.computeHash())
+	block.hash = block.computeHash()
 	block.nonce = 1
 	block.timestamp = uint64(time.Now().Unix())
 	return block
 }
 
-func (block *Block) computeHash() []byte {
+func (block *Block) computeHash() string {
 	data := bytes.Join(
 		[][]byte{
 			[]byte(block.prevHash),
@@ -83,7 +90,7 @@ func (block *Block) computeHash() []byte {
 		[]byte{},
 	)
 	hash := sha256.Sum256(data)
-	return hash[:]
+	return string(hash[:])
 }
 
 func (block *Block) getAnswer(difficulty int) string {
@@ -115,11 +122,11 @@ func (block *Block) mine(difficulty int) {
 	for {
 		hashRes := block.computeHash()
 		//fmt.Println(hashRes)
-		if hex.EncodeToString(hashRes)[:difficulty] != ans {
+		if hashRes[:difficulty] != ans {
 			//改变随机数，继续尝试
 			block.nonce++
 		} else {
-			block.hash = hex.EncodeToString(hashRes)
+			block.hash = hashRes
 			fmt.Printf("挖矿结束, nonce:%d,difficulty:%d,hash:%s\n", block.nonce, difficulty, block.hash)
 			break
 		}
