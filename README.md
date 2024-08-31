@@ -6,3 +6,6 @@ go build -v ./...
 
 ## How to run unit test
 go test -v ./...
+
+## Another Language Implement Version With JavaScript
+https://github.com/chenyongquan2/CcCoin
