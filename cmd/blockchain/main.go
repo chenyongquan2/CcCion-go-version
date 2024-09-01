@@ -2,47 +2,18 @@ package main
 
 import (
 	"CcCoin-go-version/internal/blockchain"
-	"CcCoin-go-version/internal/encryption"
-	"fmt"
+	"CcCoin-go-version/internal/server"
+	"log"
+	"net/http"
 )
 
 func main() {
 	difficulty := 3
 
-	myChain := blockchain.NewBlockchain(difficulty)
+	blockchain := blockchain.NewBlockchain(difficulty)
+	server := server.NewBlockchainServer(blockchain)
 
-	// 生成两个交易者身份的密钥对，也就是对应了钱包地址
-	senderPrivateKey, senderPublicKey := encryption.GenerateKeyPair()
-	_, receiverPublicKey := encryption.GenerateKeyPair()
-
-	//公钥作为钱包的地址，标记转账时哪个钱包地址->另外一个钱包地址
-
-	t1, err := blockchain.NewTransaction(senderPublicKey, senderPrivateKey, receiverPublicKey, 100)
-	if err != nil {
-		fmt.Printf("NewTransaction failed err: %v\n", err)
+	if err := http.ListenAndServe(":5000", server); err != nil {
+		log.Fatalf("could not listen on port 5000 %v", err)
 	}
-
-	t2, err := blockchain.NewTransaction(senderPublicKey, senderPrivateKey, receiverPublicKey, 99)
-	if err != nil {
-		fmt.Printf("NewTransaction failed err: %v\n", err)
-	}
-
-	//尝试添加交易记录到chain的交易池子transactionPool里，等待"挖出来"的block来保存这些交易记录
-	err = myChain.AddTransction2Pool(t1)
-	if err != nil {
-		fmt.Printf("Failed to add transaction to pool: %v\n", err)
-	}
-
-	err = myChain.AddTransction2Pool(t2)
-	if err != nil {
-		fmt.Printf("Failed to add transaction to pool: %v\n", err)
-	}
-
-	//准备矿工的身份
-	_, minerPublicKey := encryption.GenerateKeyPair()
-
-	//挖矿
-	fmt.Println("正在挖矿...")
-	myChain.MineTransctionFromPool(minerPublicKey)
-	fmt.Println("挖完矿了")
 }

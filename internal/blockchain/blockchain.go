@@ -43,7 +43,7 @@ func (t *Transaction) Sign(privateKey string) error {
 	return err
 }
 
-func (t *Transaction) isValid() bool {
+func (t *Transaction) IsValid() bool {
 	//当this.from === ''，说明该转账是由区块链发起的矿工奖励，无需校验签名的合法性
 	if t.from == MinerRewardFromAddress {
 		return true
@@ -100,7 +100,7 @@ func (block *Block) getAnswer(difficulty int) string {
 
 func (block *Block) validateBlockTransations() bool {
 	for _, t := range block.transactions {
-		if !t.isValid() {
+		if !t.IsValid() {
 			fmt.Println("invalid transaction found in transations, 发现异常交易")
 			return false
 		}
@@ -110,12 +110,12 @@ func (block *Block) validateBlockTransations() bool {
 
 // 计算符号区块难度要求的hash
 // 为什么需要引入难度要求?为了控制每10min会有一个区块被挖矿挖出来，需要动态调整这个难度要求
-func (block *Block) mine(difficulty int) {
+func (block *Block) mine(difficulty int) error {
 	//开挖之前，应该要检查一下即将要挖来存储的transctions的合法性,避免浪费算力
 	bOk := block.validateBlockTransations()
 	if !bOk {
 		fmt.Println("invalid transaction found in transations, stop mining!")
-		return
+		return errors.New("invalid transaction found in transations")
 	}
 
 	ans := block.getAnswer(difficulty)
@@ -131,7 +131,7 @@ func (block *Block) mine(difficulty int) {
 			break
 		}
 	}
-
+	return nil
 }
 
 // 区块的链表
@@ -171,7 +171,7 @@ func (blockchain *Blockchain) getLatestBlock() Block {
 // 添加待存储的transction到transction pool里面，供后续挖出来的block来存储这些transction交易记录
 func (blockchain *Blockchain) AddTransction2Pool(transaction Transaction) error {
 	// 添加transaction到transationsPool之前，先校验一下transation的合法性
-	if !transaction.isValid() {
+	if !transaction.IsValid() {
 		return errors.New("invalid transaction,reject it")
 	}
 	blockchain.transationsPool = append(blockchain.transationsPool, transaction)
@@ -181,7 +181,7 @@ func (blockchain *Blockchain) AddTransction2Pool(transaction Transaction) error 
 
 // 从chain的待存储的transationsPool里面挑选收益最高的transations来存储到新生成的block
 // 也就是说生成block的过程应该是chain来负责了，而不是像上面方法一样是外面传进来的
-func (blockchain *Blockchain) MineTransctionFromPool(minerRewardAddress string) {
+func (blockchain *Blockchain) MineTransctionFromPool(minerRewardAddress string) error {
 	///生成矿工奖励的transction,放到transationsPool里面
 	minerRewardTransction := Transaction{
 		from:   MinerRewardFromAddress,
@@ -191,18 +191,23 @@ func (blockchain *Blockchain) MineTransctionFromPool(minerRewardAddress string) 
 	err := blockchain.AddTransction2Pool(minerRewardTransction)
 	if err != nil {
 		fmt.Println("add minerRewardTransction to transationsPool failed")
-		return
+		return err
 	}
 
 	//从transationsPool挑选收益最高的transations来存储到新生成的block
 	newBlock := NewBlock(blockchain.transationsPool, blockchain.getLatestBlock().hash)
-	newBlock.mine(blockchain.difficulty)
+	err = newBlock.mine(blockchain.difficulty)
+	if err != nil {
+		return err
+	}
+
 	blockchain.blocks = append(blockchain.blocks, newBlock)
 	blockchain.transationsPool = []Transaction{} //reset transationsPool
+	return nil
 }
 
 // 验证区块的合法性
-func (blockchain *Blockchain) isValidChain() bool {
+func (blockchain *Blockchain) IsValidChain() bool {
 	if len(blockchain.blocks) == 1 {
 		//通过区块的hash值，验证内容和hash值有无被篡改
 		if blockchain.blocks[0].hash != string(blockchain.blocks[0].computeHash()) {

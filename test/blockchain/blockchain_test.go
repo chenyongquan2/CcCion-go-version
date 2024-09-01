@@ -17,13 +17,7 @@ func TestBlockChain(t *testing.T) {
 	_, receiverPublicKey := encryption.GenerateKeyPair()
 
 	//公钥作为钱包的地址，标记转账时哪个钱包地址->另外一个钱包地址
-
 	t1, err := blockchain.NewTransaction(senderPublicKey, senderPrivateKey, receiverPublicKey, 100)
-	if err != nil {
-		t.Errorf("NewTransaction failed err: %v", err)
-	}
-
-	t2, err := blockchain.NewTransaction(senderPublicKey, senderPrivateKey, receiverPublicKey, 99)
 	if err != nil {
 		t.Errorf("NewTransaction failed err: %v", err)
 	}
@@ -32,6 +26,11 @@ func TestBlockChain(t *testing.T) {
 	err = myChain.AddTransction2Pool(t1)
 	if err != nil {
 		t.Errorf("Failed to add transaction to pool: %v", err)
+	}
+
+	t2, err := blockchain.NewTransaction(senderPublicKey, senderPrivateKey, receiverPublicKey, 99)
+	if err != nil {
+		t.Errorf("NewTransaction failed err: %v", err)
 	}
 
 	err = myChain.AddTransction2Pool(t2)
